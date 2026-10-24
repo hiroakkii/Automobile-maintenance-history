@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>自動車メンテナンス履歴</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="vendor/xlsx.full.min.js"></script>
+</head>
+<body>
+  <header class="app-header">
+    <h1>自動車メンテナンス履歴</h1>
+    <div class="vehicle-switch">
+      <label for="vehicleSelect">車両</label>
+      <select id="vehicleSelect"></select>
+      <button type="button" id="addVehicleBtn">＋ 車両追加</button>
+      <button type="button" id="deleteVehicleBtn" class="danger">車両削除</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- 上段：車両の基本情報 -->
+    <section class="card">
+      <h2>車両基本情報</h2>
+      <form id="vehicleForm" class="vehicle-grid">
+        <label>車名<input name="name" placeholder="例: プリウス"></label>
+        <label>メーカー<input name="maker" placeholder="例: トヨタ"></label>
+        <label>型式<input name="model" placeholder="例: DAA-ZVW30"></label>
+        <label>初度登録年月<input name="firstRegistration" type="month"></label>
+        <label>登録番号（ナンバー）<input name="plate" placeholder="例: 品川 300 あ 12-34"></label>
+        <label>車台番号<input name="vin" placeholder="例: ZVW30-1234567"></label>
+        <label>原動機の型式<input name="engine" placeholder="例: 2ZR"></label>
+        <label>購入日<input name="purchaseDate" type="date"></label>
+        <label>購入時走行距離 (km)<input name="purchaseOdometer" type="number" min="0" step="1"></label>
+        <label>車検満了日<input name="inspectionExpiry" type="date"></label>
+        <label class="wide">メモ<input name="memo" placeholder="色、グレードなど"></label>
+      </form>
+      <p class="hint">入力内容は自動保存されます。</p>
+    </section>
+
+    <!-- 下段：メンテナンス履歴 -->
+    <section class="card">
+      <div class="section-head">
+        <h2>メンテナンス履歴</h2>
+        <div class="toolbar">
+          <label>内容で絞り込み
+            <select id="filterContent"><option value="">（すべて）</option></select>
+          </label>
+          <label>並び替え
+            <select id="sortSelect">
+              <option value="date:desc">日付（新しい順）</option>
+              <option value="date:asc">日付（古い順）</option>
+              <option value="content:asc">メンテナンス内容（昇順）</option>
+              <option value="content:desc">メンテナンス内容（降順）</option>
+              <option value="odometer:asc">走行距離（少ない順）</option>
+              <option value="odometer:desc">走行距離（多い順）</option>
+              <option value="total:desc">合計金額（高い順）</option>
+            </select>
+          </label>
+          <button type="button" id="exportExcelBtn" class="primary">Excel出力</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="recordTable">
+          <thead>
+            <tr>
+              <th data-sort="date">日付</th>
+              <th data-sort="odometer">走行距離 (km)</th>
+              <th data-sort="content">メンテナンス内容</th>
+              <th data-sort="parts">使用部品</th>
+              <th data-sort="partsCost">部品代 (円)</th>
+              <th data-sort="laborCost">工賃 (円)</th>
+              <th data-sort="total">合計 (円)</th>
+              <th data-sort="note">備考</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="input-row" id="inputRow">
+              <td><input data-f="date" type="date"></td>
+              <td><input data-f="odometer" type="number" min="0" step="1" placeholder="km"></td>
+              <td><input data-f="content" list="contentList" placeholder="例: エンジンオイル交換"></td>
+              <td><input data-f="parts" placeholder="例: 0W-20 4L"></td>
+              <td><input data-f="partsCost" type="number" min="0" step="1" placeholder="0"></td>
+              <td><input data-f="laborCost" type="number" min="0" step="1" placeholder="0"></td>
+              <td class="num" id="inputTotal">0</td>
+              <td><input data-f="note" placeholder="店舗など"></td>
+              <td><button type="button" id="addRecordBtn" class="primary">追加</button></td>
+            </tr>
+          </tbody>
+          <tbody id="recordBody"></tbody>
+          <tfoot>
+            <tr>
+              <th colspan="4" class="right">合計（表示中 <span id="rowCount">0</span> 件）</th>
+              <th class="num" id="sumParts">0</th>
+              <th class="num" id="sumLabor">0</th>
+              <th class="num" id="sumTotal">0</th>
+              <th colspan="2"></th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <datalist id="contentList"></datalist>
+      <p class="hint">セルを直接編集すると保存されます。見出しをクリックすると並び替えできます。「メンテナンス内容」は同じ名前で入力すると間隔分析で集計されます。</p>
+    </section>
+
+    <!-- 間隔分析 -->
+    <section class="card">
+      <h2>同じ内容のメンテナンス間隔</h2>
+      <div class="toolbar">
+        <label>メンテナンス内容
+          <select id="intervalContent"></select>
+        </label>
+      </div>
+      <div id="intervalDetail"></div>
+
+      <h3>内容別サマリー</h3>
+      <div class="table-wrap">
+        <table id="summaryTable">
+          <thead>
+            <tr>
+              <th>メンテナンス内容</th>
+              <th>回数</th>
+              <th>前回実施日</th>
+              <th>前回走行距離 (km)</th>
+              <th>平均間隔（期間）</th>
+              <th>平均間隔（距離 km）</th>
+              <th>前回からの経過</th>
+              <th>費用合計 (円)</th>
+            </tr>
+          </thead>
+          <tbody id="summaryBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>データのバックアップ</h2>
+      <p class="hint">データはこのブラウザ内（localStorage）に保存されます。別の端末へ移す場合や念のための保管にはバックアップを使ってください。</p>
+      <div class="toolbar">
+        <button type="button" id="backupBtn">バックアップ（JSON）を保存</button>
+        <label class="file-btn">バックアップから復元
+          <input type="file" id="restoreInput" accept="application/json,.json">
+        </label>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/analysis.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
