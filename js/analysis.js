@@ -125,6 +125,24 @@
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'ja'));
   }
 
+  // 指定した内容で過去に使った部品（新しく使った順）。content が空なら全部品
+  function partsFor(records, content) {
+    const key = normalizeContent(content);
+    const list = records
+      .filter((r) => normalizeContent(r.parts) && (!key || normalizeContent(r.content) === key))
+      .sort((a, b) => -compareRecordsChronologically(a, b));
+    const seen = new Set();
+    const out = [];
+    list.forEach((r) => {
+      const p = normalizeContent(r.parts);
+      if (!seen.has(p)) {
+        seen.add(p);
+        out.push(p);
+      }
+    });
+    return out;
+  }
+
   function latestOdometer(records) {
     let max = null;
     records.forEach((r) => {
@@ -181,6 +199,7 @@
     formatDays,
     intervalsFor,
     uniqueContents,
+    partsFor,
     latestOdometer,
     summarize,
     sortRecords,

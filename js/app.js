@@ -165,9 +165,8 @@
   function renderContentOptions() {
     const contents = A.uniqueContents(current().records);
 
-    const dl = $('#contentList');
-    dl.innerHTML = '';
-    Array.from(new Set(contents.concat(PRESET_CONTENTS))).forEach((c) => dl.append(el('option', { value: c })));
+    inputPickers.content.setOptions(contentOptions());
+    refreshInputParts();
 
     const fsel = $('#filterContent');
     fsel.innerHTML = '';
@@ -184,11 +183,94 @@
     if (contents.includes(prev)) isel.value = prev;
   }
 
+  // リスト選択 + 手入力の部品。値は getValue()/setValue() で扱う
+  const MANUAL = '__manual__';
+
+  function createPicker(field, placeholder) {
+    const wrap = el('div', { className: 'picker', 'data-f': field });
+    const select = el('select');
+    const input = el('input', { type: 'text', placeholder, className: 'picker-manual' });
+    let options = [];
+    let manual = false;
+
+    function build() {
+      select.innerHTML = '';
+      select.append(el('option', { value: '', text: '（選択）' }));
+      options.forEach((o) => select.append(el('option', { value: o, text: o })));
+      select.append(el('option', { value: MANUAL, text: '✎ 手入力…' }));
+    }
+
+    function sync() {
+      select.value = manual ? MANUAL : (select.querySelector(`option[value="${CSS.escape(wrap.pending ?? '')}"]`) ? wrap.pending : '');
+      input.hidden = !manual;
+    }
+
+    wrap.getValue = () => (manual ? input.value.trim() : select.value);
+    wrap.isManual = () => manual;
+    wrap.setValue = (v) => {
+      v = v || '';
+      manual = !!v && !options.includes(v);
+      wrap.pending = manual ? '' : v;
+      input.value = manual ? v : '';
+      sync();
+    };
+    wrap.setOptions = (list) => {
+      const cur = wrap.getValue();
+      const wasManual = manual;
+      options = list.slice();
+      build();
+      wrap.setValue(wasManual ? cur : (options.includes(cur) ? cur : ''));
+    };
+
+    select.addEventListener('change', () => {
+      manual = select.value === MANUAL;
+      wrap.pending = manual ? '' : select.value;
+      input.hidden = !manual;
+      if (manual) input.focus();
+    });
+
+    wrap.append(select, input);
+    build();
+    sync();
+    return wrap;
+  }
+
+  function contentOptions() {
+    return Array.from(new Set(A.uniqueContents(current().records).concat(PRESET_CONTENTS)));
+  }
+
+  function partsOptions(content, extra) {
+    const list = A.partsFor(current().records, content);
+    if (extra && !list.includes(extra)) list.push(extra);
+    return list;
+  }
+
+  const inputPickers = {
+    content: createPicker('content', '内容を入力'),
+    parts: createPicker('parts', '部品を入力'),
+  };
+  document.querySelector('#inputRow [data-slot="content"]').append(inputPickers.content);
+  document.querySelector('#inputRow [data-slot="parts"]').append(inputPickers.parts);
+
+  function refreshInputParts() {
+    inputPickers.parts.setOptions(partsOptions(inputPickers.content.getValue()));
+  }
+
+  inputPickers.content.addEventListener('change', refreshInputParts);
+
+  function cellPicker(record, field) {
+    const picker = createPicker(field, field === 'content' ? '内容を入力' : '部品を入力');
+    picker.setOptions(field === 'content'
+      ? contentOptions().concat(record.content && !contentOptions().includes(record.content) ? [record.content] : [])
+      : partsOptions(record.content, record.parts));
+    picker.setValue(record[field] || '');
+    return el('td', null, [picker]);
+  }
+
   function cellInput(record, field) {
     const attrs = { 'data-f': field };
     if (field === 'date') attrs.type = 'date';
     else if (NUMBER_FIELDS.has(field)) Object.assign(attrs, { type: 'number', min: '0', step: '1' });
-    if (field === 'content') attrs.list = 'contentList';
     const input = el('input', attrs);
     input.value = record[field] ?? '';
     return el('td', null, [input]);
@@ -201,7 +283,7 @@
 
     recs.forEach((r) => {
       const tr = el('tr', { 'data-id': r.id });
-      tr.append(cellInput(r, 'date'), cellInput(r, 'odometer'), cellInput(r, 'content'), cellInput(r, 'parts'),
+      tr.append(cellInput(r, 'date'), cellInput(r, 'odometer'), cellPicker(r, 'content'), cellPicker(r, 'parts'),
         cellInput(r, 'partsCost'), cellInput(r, 'laborCost'));
       tr.append(el('td', { className: 'num total', text: yen(A.recordTotal(r)) }));
       tr.append(cellInput(r, 'note'));
@@ -240,16 +322,30 @@
 
   // 既存行の編集
   $('#recordBody').addEventListener('change', (e) => {
-    const input = e.target;
-    const tr = input.closest('tr[data-id]');
-    if (!tr || !input.dataset.f) return;
+    const input = e.target.closest('[data-f]');
+    const tr = input && input.closest('tr[data-id]');
+    if (!tr) return;
     const rec = current().records.find((r) => r.id === tr.dataset.id);
     if (!rec) return;
-    rec[input.dataset.f] = input.dataset.f === 'content' ? input.value.trim() : input.value;
+    const field = input.dataset.f;
+    const value = input.getValue ? input.getValue() : (field === 'content' ? input.value.trim() : input.value);
+    // 「手入力」を選んだだけで未入力の間は保存しない
+    if (input.isManual && input.isManual() && !value) return;
+    if (field === 'content' && !value) {
+      renderRecords();
+      return;
+    }
+    rec[field] = value;
     save();
     tr.querySelector('.total').textContent = yen(A.recordTotal(rec));
     renderTotals(visibleRecords());
-    if (input.dataset.f === 'content') renderContentOptions();
+    if (field === 'content') {
+      renderContentOptions();
+      // この行の部品リストを新しい内容に合わせる
+      const partsPicker = tr.querySelector('.picker[data-f="parts"]');
+      partsPicker.setOptions(partsOptions(rec.content, rec.parts));
+      partsPicker.setValue(rec.parts || '');
+    }
     renderAnalysis();
   });
 
@@ -271,8 +367,8 @@
 
   function readInputRow() {
     const rec = {};
-    inputRow.querySelectorAll('input[data-f]').forEach((i) => {
-      rec[i.dataset.f] = i.dataset.f === 'content' ? i.value.trim() : i.value;
+    inputRow.querySelectorAll('[data-f]').forEach((i) => {
+      rec[i.dataset.f] = i.getValue ? i.getValue() : i.value;
     });
     return rec;
   }
@@ -298,15 +394,17 @@
       return;
     }
     if (!rec.content) {
-      alert('メンテナンス内容を入力してください。');
-      inputRow.querySelector('[data-f="content"]').focus();
+      alert('メンテナンス内容を選択または入力してください。');
+      inputRow.querySelector('[data-f="content"] select').focus();
       return;
     }
     rec.id = uid();
     current().records.push(rec);
     save();
-    inputRow.querySelectorAll('input[data-f]').forEach((i) => {
-      if (i.dataset.f !== 'date') i.value = '';
+    inputRow.querySelectorAll('[data-f]').forEach((i) => {
+      if (i.dataset.f === 'date') return;
+      if (i.setValue) i.setValue('');
+      else i.value = '';
     });
     $('#inputTotal').textContent = '0';
     renderContentOptions();

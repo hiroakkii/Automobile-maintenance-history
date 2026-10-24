@@ -154,3 +154,10 @@ tr.empty td { color: var(--muted); text-align: center; padding: 16px; }
   .app-header .vehicle-switch, .toolbar, .input-row, button, .hint { display: none !important; }
   .card { border: none; }
 }
+
+.picker { display: flex; flex-direction: column; gap: 3px; min-width: 150px; }
+.picker select, .picker input { width: 100%; }
+.picker input[hidden] { display: none; }
+#recordTable td .picker select { border-color: transparent; background: transparent; }
+#recordTable td .picker select:hover { border-color: var(--border); }
+#recordTable .input-row td .picker select { border-color: var(--border); background: var(--card); }

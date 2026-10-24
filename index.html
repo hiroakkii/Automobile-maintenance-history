@@ -80,8 +80,8 @@
             <tr class="input-row" id="inputRow">
               <td><input data-f="date" type="date"></td>
               <td><input data-f="odometer" type="number" min="0" step="1" placeholder="km"></td>
-              <td><input data-f="content" list="contentList" placeholder="例: エンジンオイル交換"></td>
-              <td><input data-f="parts" placeholder="例: 0W-20 4L"></td>
+              <td data-slot="content"></td>
+              <td data-slot="parts"></td>
               <td><input data-f="partsCost" type="number" min="0" step="1" placeholder="0"></td>
               <td><input data-f="laborCost" type="number" min="0" step="1" placeholder="0"></td>
               <td class="num" id="inputTotal">0</td>
@@ -101,8 +101,7 @@
           </tfoot>
         </table>
       </div>
-      <datalist id="contentList"></datalist>
-      <p class="hint">セルを直接編集すると保存されます。見出しをクリックすると並び替えできます。「メンテナンス内容」は同じ名前で入力すると間隔分析で集計されます。</p>
+      <p class="hint">セルを直接編集すると保存されます。見出しをクリックすると並び替えできます。「メンテナンス内容」「使用部品」は過去の入力からリストで選べ、リストにないものは「✎ 手入力…」で入力できます（使用部品は選んだメンテナンス内容で過去に使った部品が出ます）。同じ内容は同じ名前で揃えると間隔分析で集計されます。</p>
     </section>
 
     <!-- 間隔分析 -->
