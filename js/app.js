@@ -118,6 +118,43 @@
     VEHICLE_FIELDS.forEach(([key]) => {
       form.elements[key].value = info[key] ?? '';
     });
+    // 入力済みの車両は編集欄を閉じて、履歴を見やすくする
+    document.querySelector('.vehicle-edit').open = !(info.name || info.plate);
+    renderVehicleSummary();
+  }
+
+  // 上段のナンバープレート風表示と要約
+  function renderVehicleSummary() {
+    const v = current();
+    const info = v.info;
+    const parts = (info.plate || '').trim().split(/\s+/).filter(Boolean);
+    const plate = $('#plateView');
+    // 「品川 300 あ 12-34」の形なら 2 段に分ける
+    const region = parts.length >= 4 ? parts.slice(0, 2).join(' ') : '';
+    const serial = parts.length >= 4 ? parts.slice(2).join(' ') : parts.join(' ');
+    plate.querySelector('.plate-region').textContent = region;
+    plate.querySelector('.plate-serial').textContent = serial || '登録番号 未入力';
+    plate.classList.toggle('is-empty', !serial);
+    plate.setAttribute('aria-label', '登録番号 ' + (parts.join(' ') || '未入力'));
+
+    const title = [info.maker, info.name].filter(Boolean).join(' ');
+    $('#vehicleTitle').textContent = title || '車両情報を入力してください';
+    $('#factModel').textContent = info.model || '—';
+    $('#factFirstReg').textContent = info.firstRegistration ? info.firstRegistration.replace('-', '年') + '月' : '—';
+
+    const exp = $('#factInspection');
+    exp.className = '';
+    exp.textContent = '—';
+    if (info.inspectionExpiry) {
+      const left = A.daysBetween(today(), info.inspectionExpiry);
+      let note = '';
+      if (left !== null) {
+        if (left < 0) { note = `（${-left}日超過）`; exp.className = 'alert'; }
+        else if (left <= 60) { note = `（あと${left}日）`; exp.className = 'alert'; }
+        else note = `（あと${left}日）`;
+      }
+      exp.textContent = info.inspectionExpiry.replace(/-/g, '/') + note;
+    }
   }
 
   $('#vehicleForm').addEventListener('input', (e) => {
@@ -126,6 +163,7 @@
     current().info[name] = e.target.value;
     save();
     if (name === 'name' || name === 'maker') renderVehicleSelect();
+    renderVehicleSummary();
   });
 
   $('#vehicleSelect').addEventListener('change', (e) => {

@@ -20,26 +20,42 @@
 
   <main>
     <!-- 上段：車両の基本情報 -->
-    <section class="card">
-      <h2>車両基本情報</h2>
-      <form id="vehicleForm" class="vehicle-grid">
-        <label>車名<input name="name" placeholder="例: プリウス"></label>
-        <label>メーカー<input name="maker" placeholder="例: トヨタ"></label>
-        <label>型式<input name="model" placeholder="例: DAA-ZVW30"></label>
-        <label>初度登録年月<input name="firstRegistration" type="month"></label>
-        <label>登録番号（ナンバー）<input name="plate" placeholder="例: 品川 300 あ 12-34"></label>
-        <label>車台番号<input name="vin" placeholder="例: ZVW30-1234567"></label>
-        <label>原動機の型式<input name="engine" placeholder="例: 2ZR"></label>
-        <label>購入日<input name="purchaseDate" type="date"></label>
-        <label>購入時走行距離 (km)<input name="purchaseOdometer" type="number" min="0" step="1"></label>
-        <label>車検満了日<input name="inspectionExpiry" type="date"></label>
-        <label class="wide">メモ<input name="memo" placeholder="色、グレードなど"></label>
-      </form>
-      <p class="hint">入力内容は自動保存されます。</p>
+    <section class="vehicle" aria-labelledby="vehicleTitle">
+      <div class="vehicle-top">
+        <div class="plate" id="plateView" role="img" aria-label="登録番号">
+          <span class="plate-region"></span>
+          <span class="plate-serial"></span>
+        </div>
+        <div class="vehicle-name">
+          <h2 id="vehicleTitle"></h2>
+          <dl class="facts">
+            <div><dt>型式</dt><dd id="factModel"></dd></div>
+            <div><dt>初度登録</dt><dd id="factFirstReg"></dd></div>
+            <div><dt>車検満了</dt><dd id="factInspection"></dd></div>
+          </dl>
+        </div>
+      </div>
+      <details class="vehicle-edit" open>
+        <summary>車両情報を編集</summary>
+        <form id="vehicleForm" class="vehicle-grid">
+          <label>車名<input name="name" placeholder="例: プリウス"></label>
+          <label>メーカー<input name="maker" placeholder="例: トヨタ"></label>
+          <label>型式<input name="model" placeholder="例: DAA-ZVW30"></label>
+          <label>初度登録年月<input name="firstRegistration" type="month"></label>
+          <label>登録番号（ナンバー）<input name="plate" placeholder="例: 品川 300 あ 12-34"></label>
+          <label>車台番号<input name="vin" placeholder="例: ZVW30-1234567"></label>
+          <label>原動機の型式<input name="engine" placeholder="例: 2ZR"></label>
+          <label>購入日<input name="purchaseDate" type="date"></label>
+          <label>購入時走行距離 (km)<input name="purchaseOdometer" type="number" min="0" step="1"></label>
+          <label>車検満了日<input name="inspectionExpiry" type="date"></label>
+          <label class="wide">メモ<input name="memo" placeholder="色、グレードなど"></label>
+        </form>
+        <p class="hint">入力内容は自動保存されます。</p>
+      </details>
     </section>
 
     <!-- 下段：メンテナンス履歴 -->
-    <section class="card">
+    <section class="sheet">
       <div class="section-head">
         <h2>メンテナンス履歴</h2>
         <div class="toolbar">
@@ -105,7 +121,7 @@
     </section>
 
     <!-- 間隔分析 -->
-    <section class="card">
+    <section class="sheet">
       <h2>同じ内容のメンテナンス間隔</h2>
       <div class="toolbar">
         <label>メンテナンス内容
@@ -134,7 +150,7 @@
       </div>
     </section>
 
-    <section class="card">
+    <section class="sheet">
       <h2>データのバックアップ</h2>
       <p class="hint">データはこのブラウザ内（localStorage）に保存されます。別の端末へ移す場合や念のための保管にはバックアップを使ってください。</p>
       <div class="toolbar">
