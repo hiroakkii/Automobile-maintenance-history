@@ -71,8 +71,10 @@
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) {
-      alert('データを保存できませんでした: ' + e.message);
+      alert('データを保存できませんでした（保存容量の上限の可能性があります）: ' + e.message);
+      return false;
     }
+    return true;
   }
 
   function current() {
@@ -123,10 +125,73 @@
     renderVehicleSummary();
   }
 
+  // ---------- 車体の写真 ----------
+  const PHOTO_MAX = 960; // 長辺の最大ピクセル数。縮小して保存容量を抑える
+
+  function renderPhoto() {
+    const photo = current().info.photo;
+    const img = $('#photoImg');
+    img.hidden = !photo;
+    if (photo) img.src = photo;
+    $('#photoPick').hidden = !!photo;
+    $('#photoActions').hidden = !photo;
+  }
+
+  function resizeImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, PHOTO_MAX / Math.max(img.naturalWidth, img.naturalHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.naturalWidth * scale);
+        canvas.height = Math.round(img.naturalHeight * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff'; // 透過 PNG を黒くしない
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('画像を読み込めませんでした'));
+      };
+      img.src = url;
+    });
+  }
+
+  $('#photoPick').addEventListener('click', () => $('#photoInput').click());
+  $('#photoChange').addEventListener('click', () => $('#photoInput').click());
+
+  $('#photoInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    const info = current().info;
+    const before = info.photo;
+    try {
+      info.photo = await resizeImage(file);
+    } catch (err) {
+      alert(err.message + '。JPEG・PNG などの画像を選んでください。');
+      return;
+    }
+    if (!save()) info.photo = before;
+    renderPhoto();
+  });
+
+  $('#photoRemove').addEventListener('click', () => {
+    if (!confirm('登録した写真を削除しますか？')) return;
+    delete current().info.photo;
+    save();
+    renderPhoto();
+  });
+
   // 上段のナンバープレート風表示と要約
   function renderVehicleSummary() {
     const v = current();
     const info = v.info;
+    renderPhoto();
     const parts = (info.plate || '').trim().split(/\s+/).filter(Boolean);
     const plate = $('#plateView');
     // 「品川 300 あ 12-34」の形なら 2 段に分ける

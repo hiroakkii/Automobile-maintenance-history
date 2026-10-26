@@ -22,6 +22,15 @@
     <!-- 上段：車両の基本情報 -->
     <section class="vehicle" aria-labelledby="vehicleTitle">
       <div class="vehicle-top">
+        <figure class="photo" id="photoBox">
+          <img id="photoImg" alt="車体の写真" hidden>
+          <button type="button" id="photoPick" class="photo-empty">車体の写真を登録</button>
+          <div class="photo-actions" id="photoActions" hidden>
+            <button type="button" id="photoChange" class="small">変更</button>
+            <button type="button" id="photoRemove" class="small danger">削除</button>
+          </div>
+          <input type="file" id="photoInput" accept="image/*" hidden>
+        </figure>
         <div class="plate" id="plateView" role="img" aria-label="登録番号">
           <span class="plate-region"></span>
           <span class="plate-serial"></span>
